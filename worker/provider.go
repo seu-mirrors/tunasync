@@ -36,8 +36,6 @@ type mirrorProvider interface {
 	IsRunning() bool
 	// Cgroup
 	Cgroup() *cgroupHook
-	// ZFS
-	ZFS() *zfsHook
 	// Docker
 	Docker() *dockerHook
 
@@ -193,11 +191,6 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 
 	// Add Logging Hook
 	provider.AddHook(newLogLimiter(provider))
-
-	// Add ZFS Hook
-	if cfg.ZFS.Enable {
-		provider.AddHook(newZfsHook(provider, cfg.ZFS.Zpool))
-	}
 
 	// Add Btrfs Snapshot Hook
 	if cfg.BtrfsSnapshot.Enable {

@@ -24,7 +24,6 @@ type baseProvider struct {
 	isRunning atomic.Value
 
 	cgroup *cgroupHook
-	zfs    *zfsHook
 	docker *dockerHook
 
 	hooks []jobHook
@@ -96,8 +95,6 @@ func (p *baseProvider) AddHook(hook jobHook) {
 	switch v := hook.(type) {
 	case *cgroupHook:
 		p.cgroup = v
-	case *zfsHook:
-		p.zfs = v
 	case *dockerHook:
 		p.docker = v
 	}
@@ -110,10 +107,6 @@ func (p *baseProvider) Hooks() []jobHook {
 
 func (p *baseProvider) Cgroup() *cgroupHook {
 	return p.cgroup
-}
-
-func (p *baseProvider) ZFS() *zfsHook {
-	return p.zfs
 }
 
 func (p *baseProvider) Docker() *dockerHook {

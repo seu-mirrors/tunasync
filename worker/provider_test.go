@@ -458,7 +458,6 @@ sleep 10
 		So(err, ShouldBeNil)
 
 		So(provider.IsMaster(), ShouldEqual, false)
-		So(provider.ZFS(), ShouldBeNil)
 		So(provider.Type(), ShouldEqual, provCommand)
 		So(provider.Name(), ShouldEqual, c.name)
 		So(provider.WorkingDir(), ShouldEqual, c.workingDir)
