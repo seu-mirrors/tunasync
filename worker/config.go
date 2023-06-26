@@ -5,11 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"dario.cat/mergo"
 	"github.com/BurntSushi/toml"
-	"github.com/imdario/mergo"
-	units "github.com/docker/go-units"
 	cgv1 "github.com/containerd/cgroups"
 	cgv2 "github.com/containerd/cgroups/v2"
+	units "github.com/docker/go-units"
 )
 
 type providerEnum uint8
