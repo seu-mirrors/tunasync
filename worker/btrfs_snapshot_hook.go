@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux
 
 package worker
 
@@ -13,6 +13,7 @@ import (
 type btrfsSnapshotHook struct {
 	provider           mirrorProvider
 	mirrorSnapshotPath string
+	mirrorCurrentPath  string
 }
 
 // the user who runs the jobs (typically `tunasync`) should be granted the permission to run btrfs commands
