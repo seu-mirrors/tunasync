@@ -2,17 +2,16 @@ package manager
 
 import (
 	"fmt"
-
-	"github.com/boltdb/bolt"
+	"go.etcd.io/bbolt"
 )
 
 // implement kv interface backed by boltdb
 type boltAdapter struct {
-	db *bolt.DB
+	db *bbolt.DB
 }
 
 func (b *boltAdapter) InitBucket(bucket string) (err error) {
-	return b.db.Update(func(tx *bolt.Tx) error {
+	return b.db.Update(func(tx *bbolt.Tx) error {
 		_, err = tx.CreateBucketIfNotExists([]byte(bucket))
 		if err != nil {
 			return fmt.Errorf("create bucket %s error: %s", _workerBucketKey, err.Error())
@@ -22,7 +21,7 @@ func (b *boltAdapter) InitBucket(bucket string) (err error) {
 }
 
 func (b *boltAdapter) Get(bucket string, key string) (v []byte, err error) {
-	err = b.db.View(func(tx *bolt.Tx) error {
+	err = b.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucket))
 		v = bucket.Get([]byte(key))
 		return nil
@@ -31,7 +30,7 @@ func (b *boltAdapter) Get(bucket string, key string) (v []byte, err error) {
 }
 
 func (b *boltAdapter) GetAll(bucket string) (m map[string][]byte, err error) {
-	err = b.db.View(func(tx *bolt.Tx) error {
+	err = b.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucket))
 		c := bucket.Cursor()
 		m = make(map[string][]byte)
@@ -44,7 +43,7 @@ func (b *boltAdapter) GetAll(bucket string) (m map[string][]byte, err error) {
 }
 
 func (b *boltAdapter) Put(bucket string, key string, value []byte) error {
-	err := b.db.Update(func(tx *bolt.Tx) error {
+	err := b.db.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucket))
 		err := bucket.Put([]byte(key), value)
 		return err
@@ -53,7 +52,7 @@ func (b *boltAdapter) Put(bucket string, key string, value []byte) error {
 }
 
 func (b *boltAdapter) Delete(bucket string, key string) error {
-	err := b.db.Update(func(tx *bolt.Tx) error {
+	err := b.db.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(bucket))
 		err := bucket.Delete([]byte(key))
 		return err

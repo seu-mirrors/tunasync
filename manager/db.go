@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"go.etcd.io/bbolt"
 
 	. "github.com/tuna/tunasync/internal"
 )
@@ -47,7 +47,7 @@ const (
 
 func makeDBAdapter(dbType string, dbFile string) (dbAdapter, error) {
 	if dbType == "bolt" {
-		innerDB, err := bolt.Open(dbFile, 0600, &bolt.Options{
+		innerDB, err := bbolt.Open(dbFile, 0600, &bbolt.Options{
 			Timeout: 5 * time.Second,
 		})
 		if err != nil {
