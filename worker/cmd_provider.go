@@ -20,6 +20,9 @@ type cmdConfig struct {
 	env                         map[string]string
 	failOnMatch                 string
 	sizePattern                 string
+
+	uid int
+	gid int
 }
 
 type cmdProvider struct {
@@ -133,7 +136,7 @@ func (p *cmdProvider) Start() error {
 	for k, v := range p.env {
 		env[k] = v
 	}
-	p.cmd = newCmdJob(p, p.command, p.WorkingDir(), env)
+	p.cmd = newCmdJob(p, p.command, p.WorkingDir(), env, p.cmdConfig.uid, p.cmdConfig.gid)
 	if err := p.prepareLogFile(false); err != nil {
 		return err
 	}

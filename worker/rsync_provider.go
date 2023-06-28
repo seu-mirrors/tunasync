@@ -23,6 +23,9 @@ type rsyncConfig struct {
 	interval                                     time.Duration
 	retry                                        int
 	timeout                                      time.Duration
+
+	uid int
+	gid int
 }
 
 // An RsyncProvider provides the implementation to rsync-based syncing jobs
@@ -67,7 +70,7 @@ func newRsyncProvider(c rsyncConfig) (*rsyncProvider, error) {
 
 	options := []string{
 		"-aHvh", "--no-o", "--no-g", "--stats",
-		"--filter" , "risk .~tmp~/", "--exclude", ".~tmp~/",
+		"--filter", "risk .~tmp~/", "--exclude", ".~tmp~/",
 		"--delete", "--delete-after", "--delay-updates",
 		"--safe-links",
 	}
@@ -149,7 +152,7 @@ func (p *rsyncProvider) Start() error {
 	command = append(command, p.options...)
 	command = append(command, p.upstreamURL, p.WorkingDir())
 
-	p.cmd = newCmdJob(p, command, p.WorkingDir(), p.rsyncEnv)
+	p.cmd = newCmdJob(p, command, p.WorkingDir(), p.rsyncEnv, p.rsyncConfig.uid, p.rsyncConfig.gid)
 	if err := p.prepareLogFile(false); err != nil {
 		return err
 	}

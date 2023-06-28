@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/codeskyblue/go-sh"
-	"golang.org/x/sys/unix"
-	"github.com/moby/moby/pkg/reexec"
 	cgv1 "github.com/containerd/cgroups"
+	"github.com/moby/moby/pkg/reexec"
+	"golang.org/x/sys/unix"
 )
 
 // runner is to run os commands giving command line, env and log file
@@ -32,7 +32,7 @@ type cmdJob struct {
 	retErr     error
 }
 
-func newCmdJob(provider mirrorProvider, cmdAndArgs []string, workingDir string, env map[string]string) *cmdJob {
+func newCmdJob(provider mirrorProvider, cmdAndArgs []string, workingDir string, env map[string]string, uid, gid int) *cmdJob {
 	var cmd *exec.Cmd
 
 	if d := provider.Docker(); d != nil {
@@ -60,7 +60,7 @@ func newCmdJob(provider mirrorProvider, cmdAndArgs []string, workingDir string, 
 		}
 		// set memlimit
 		if d.memoryLimit != 0 {
-		  args = append(args, "-m", fmt.Sprint(d.memoryLimit.Value()))
+			args = append(args, "-m", fmt.Sprint(d.memoryLimit.Value()))
 		}
 		// apply options
 		args = append(args, d.options...)
@@ -84,6 +84,9 @@ func newCmdJob(provider mirrorProvider, cmdAndArgs []string, workingDir string, 
 		} else if len(cmdAndArgs) == 0 {
 			panic("Command length should be at least 1!")
 		}
+
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+		cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 	}
 
 	if provider.Docker() == nil {
@@ -115,7 +118,7 @@ func (c *cmdJob) Start() error {
 	if cg != nil {
 		logger.Debugf("Preparing cgroup sync pipes for job %s", c.provider.Name())
 		var err error
-		pipeR, pipeW, err = os.Pipe();
+		pipeR, pipeW, err = os.Pipe()
 		if err != nil {
 			return err
 		}
@@ -139,7 +142,7 @@ func (c *cmdJob) Start() error {
 		}
 		pid := c.cmd.Process.Pid
 		if cg.cgCfg.isUnified {
-			if err := cg.cgMgrV2.AddProc(uint64(pid)); err != nil{
+			if err := cg.cgMgrV2.AddProc(uint64(pid)); err != nil {
 				if errors.Is(err, syscall.ESRCH) {
 					logger.Infof("Write pid %d to cgroup failed: process vanished, ignoring")
 				} else {
@@ -147,7 +150,7 @@ func (c *cmdJob) Start() error {
 				}
 			}
 		} else {
-			if err := cg.cgMgrV1.Add(cgv1.Process{Pid: pid}); err != nil{
+			if err := cg.cgMgrV1.Add(cgv1.Process{Pid: pid}); err != nil {
 				if errors.Is(err, syscall.ESRCH) {
 					logger.Infof("Write pid %d to cgroup failed: process vanished, ignoring")
 				} else {
@@ -209,7 +212,7 @@ func (c *cmdJob) Terminate() error {
 }
 
 // Copied from go-sh
-func newEnviron(env map[string]string, inherit bool) []string { //map[string]string {
+func newEnviron(env map[string]string, inherit bool) []string { // map[string]string {
 	environ := make([]string, 0, len(env))
 	if inherit {
 		for _, line := range os.Environ() {

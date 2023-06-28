@@ -1,15 +1,16 @@
 package worker
 
 import (
-	"errors"
-	"os"
-	"path/filepath"
-
 	"dario.cat/mergo"
+	"errors"
 	"github.com/BurntSushi/toml"
 	cgv1 "github.com/containerd/cgroups"
 	cgv2 "github.com/containerd/cgroups/v2"
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
+	"os"
+	"os/user"
+	"path/filepath"
+	"strconv"
 )
 
 type providerEnum uint8
@@ -30,7 +31,7 @@ func (p *providerEnum) UnmarshalText(text []byte) error {
 	case `two-stage-rsync`:
 		*p = provTwoStageRsync
 	default:
-		return errors.New("Invalid value to provierEnum")
+		return errors.New("invalid value to providerEnum")
 	}
 	return nil
 }
@@ -59,6 +60,11 @@ type globalConfig struct {
 
 	ExecOnSuccess []string `toml:"exec_on_success"`
 	ExecOnFailure []string `toml:"exec_on_failure"`
+
+	User  string `toml:"user"`
+	Group string `toml:"group"`
+	Uid   int
+	Gid   int
 }
 
 type managerConfig struct {
@@ -134,7 +140,7 @@ func (m *MemBytes) Value() int64 {
 	return int64(*m)
 }
 
-// UnmarshalJSON is the customized unmarshaler for MemBytes
+// UnmarshalText is the customized unmarshaler for MemBytes
 func (m *MemBytes) UnmarshalText(s []byte) error {
 	val, err := units.RAMInBytes(string(s))
 	*m = MemBytes(val)
@@ -194,6 +200,39 @@ func LoadConfig(cfgFile string) (*Config, error) {
 	if _, err := toml.DecodeFile(cfgFile, cfg); err != nil {
 		logger.Errorf(err.Error())
 		return nil, err
+	}
+
+	if cfg.Global.User == "" {
+		current, err := user.Current()
+		if err != nil {
+			logger.Errorf(err.Error())
+			return nil, err
+		}
+		cfg.Global.User = current.Username
+		cfg.Global.Uid, _ = strconv.Atoi(current.Uid)
+	} else {
+		u, err := user.Lookup(cfg.Global.User)
+		if err != nil {
+			logger.Errorf(err.Error())
+			return nil, err
+		}
+		cfg.Global.Uid, _ = strconv.Atoi(u.Uid)
+	}
+
+	if cfg.Global.Group == "" {
+		current, err := user.Current()
+		if err != nil {
+			logger.Errorf(err.Error())
+			return nil, err
+		}
+		cfg.Global.Group = current.Gid
+	} else {
+		g, err := user.LookupGroup(cfg.Global.Group)
+		if err != nil {
+			logger.Errorf(err.Error())
+			return nil, err
+		}
+		cfg.Global.Gid, _ = strconv.Atoi(g.Gid)
 	}
 
 	if cfg.Include.IncludeMirrors != "" {

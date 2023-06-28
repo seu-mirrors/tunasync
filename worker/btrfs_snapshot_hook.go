@@ -32,37 +32,55 @@ type providerBtrfsSnapshotConfig struct {
 	mirrorWorkingDir string
 	// store all ro snapshots
 	mirrorSnapshotDir string
+
+	uid int
+	gid int
 }
 
 // initialize and create dir / subvolume if needed
-func newProviderBtrfsSnapshotConfig(mirrorDir string, btrfsConfig btrfsSnapshotConfig, mirror mirrorConfig) *providerBtrfsSnapshotConfig {
+func newProviderBtrfsSnapshotConfig(mirrorDir string, btrfsConfig btrfsSnapshotConfig, mirror mirrorConfig, uid, gid int) *providerBtrfsSnapshotConfig {
 	c := &providerBtrfsSnapshotConfig{
 		mirrorServeDir:    filepath.Join(mirrorDir, btrfsConfig.ServePrefix, mirror.Dir),
 		mirrorWorkingDir:  filepath.Join(mirrorDir, btrfsConfig.WorkingPrefix, mirror.Dir),
 		mirrorSnapshotDir: filepath.Join(mirrorDir, btrfsConfig.SnapshotPrefix, mirror.Dir),
+
+		uid: uid,
+		gid: gid,
 	}
 
 	// create [btrfs]/snapshot/[mirror_name]
 	if _, err := os.Stat(c.mirrorSnapshotDir); os.IsNotExist(err) {
-		err := os.MkdirAll(c.mirrorSnapshotDir, 0644)
+		err := os.MkdirAll(c.mirrorSnapshotDir, 0755)
 		if err != nil {
 			logger.Errorf("failed to create dir %s: %s", c.mirrorSnapshotDir, err.Error())
+		}
+		if err := os.Chown(c.mirrorSnapshotDir, c.uid, c.gid); err != nil {
+			logger.Warningf("failed to chown dir %s: %s", c.mirrorSnapshotDir, err.Error())
+		}
+		if err := os.Chown(filepath.Dir(c.mirrorSnapshotDir), c.uid, c.gid); err != nil {
+			logger.Warningf("failed to chown dir %s: %s", filepath.Dir(c.mirrorSnapshotDir), err.Error())
 		}
 	}
 
 	// create [btrfs]/working
 	if _, err := os.Stat(filepath.Dir(c.mirrorWorkingDir)); os.IsNotExist(err) {
-		err := os.MkdirAll(filepath.Dir(c.mirrorWorkingDir), 0644)
+		err := os.MkdirAll(filepath.Dir(c.mirrorWorkingDir), 0755)
 		if err != nil {
 			logger.Errorf("failed to create dir %s: %s", filepath.Dir(c.mirrorWorkingDir), err.Error())
+		}
+		if err := os.Chown(filepath.Dir(c.mirrorWorkingDir), c.uid, c.gid); err != nil {
+			logger.Warningf("failed to chown dir %s: %s", filepath.Dir(c.mirrorWorkingDir), err.Error())
 		}
 	}
 
 	// create [btrfs]/serve
 	if _, err := os.Stat(filepath.Dir(c.mirrorServeDir)); os.IsNotExist(err) {
-		err := os.MkdirAll(filepath.Dir(c.mirrorServeDir), 0644)
+		err := os.MkdirAll(filepath.Dir(c.mirrorServeDir), 0755)
 		if err != nil {
 			logger.Errorf("failed to create dir %s: %s", filepath.Dir(c.mirrorServeDir), err.Error())
+		}
+		if err := os.Chown(filepath.Dir(c.mirrorServeDir), c.uid, c.gid); err != nil {
+			logger.Warningf("failed to chown dir %s: %s", filepath.Dir(c.mirrorServeDir), err.Error())
 		}
 	}
 
@@ -105,6 +123,10 @@ func (c *providerBtrfsSnapshotConfig) LatestSnapshot() (string, error) {
 		snapshotName := c.NewSnapshotName()
 		snapshotDir := filepath.Join(c.mirrorSnapshotDir, snapshotName)
 		err := btrfs.SnapshotSubVolume(filepath.Join(c.mirrorSnapshotDir, "base"), snapshotDir, true)
+		if err != nil {
+			logger.Errorf("failed to create Btrfs snapshot %s: %s", snapshotDir, err.Error())
+		}
+		logger.Noticef("created new Btrfs snapshot %s", snapshotDir)
 		return snapshotName, err
 	}
 

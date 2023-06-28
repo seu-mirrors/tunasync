@@ -23,6 +23,9 @@ type twoStageRsyncConfig struct {
 	interval                                     time.Duration
 	retry                                        int
 	timeout                                      time.Duration
+
+	uid int
+	gid int
 }
 
 // An RsyncProvider provides the implementation to rsync-based syncing jobs
@@ -35,9 +38,9 @@ type twoStageRsyncProvider struct {
 }
 
 // ref: https://salsa.debian.org/mirror-team/archvsync/-/blob/master/bin/ftpsync#L431
-var rsyncStage1Profiles = map[string]([]string){
-	"debian": []string{"--include=*.diff/", "--exclude=*.diff/Index", "--exclude=Packages*", "--exclude=Sources*", "--exclude=Release*", "--exclude=InRelease", "--include=i18n/by-hash", "--exclude=i18n/*", "--exclude=ls-lR*"},
-	"debian-oldstyle": []string{
+var rsyncStage1Profiles = map[string][]string{
+	"debian": {"--include=*.diff/", "--exclude=*.diff/Index", "--exclude=Packages*", "--exclude=Sources*", "--exclude=Release*", "--exclude=InRelease", "--include=i18n/by-hash", "--exclude=i18n/*", "--exclude=ls-lR*"},
+	"debian-oldstyle": {
 		"--exclude=Packages*", "--exclude=Sources*", "--exclude=Release*",
 		"--exclude=InRelease", "--exclude=i18n/*", "--exclude=ls-lR*", "--exclude=dep11/*",
 	},
@@ -167,7 +170,7 @@ func (p *twoStageRsyncProvider) Run(started chan empty) error {
 		command = append(command, options...)
 		command = append(command, p.upstreamURL, p.WorkingDir())
 
-		p.cmd = newCmdJob(p, command, p.WorkingDir(), p.rsyncEnv)
+		p.cmd = newCmdJob(p, command, p.WorkingDir(), p.rsyncEnv, p.twoStageRsyncConfig.uid, p.twoStageRsyncConfig.gid)
 		if err := p.prepareLogFile(stage > 1); err != nil {
 			return err
 		}

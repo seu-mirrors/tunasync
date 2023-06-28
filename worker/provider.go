@@ -83,7 +83,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 	)
 	pBtrfsConfig := &providerBtrfsSnapshotConfig{}
 	if cfg.BtrfsSnapshot.Enable {
-		pBtrfsConfig = newProviderBtrfsSnapshotConfig(cfg.Global.MirrorDir, cfg.BtrfsSnapshot, mirror)
+		pBtrfsConfig = newProviderBtrfsSnapshotConfig(cfg.Global.MirrorDir, cfg.BtrfsSnapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
 		workingDir = pBtrfsConfig.mirrorWorkingDir
 	}
 	if logDir == "" {
@@ -127,6 +127,9 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 			retry:       mirror.Retry,
 			timeout:     time.Duration(mirror.Timeout) * time.Second,
 			env:         mirror.Env,
+
+			uid: cfg.Global.Uid,
+			gid: cfg.Global.Gid,
 		}
 		p, err := newCmdProvider(pc)
 		if err != nil {
@@ -155,6 +158,9 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 			interval:          time.Duration(mirror.Interval) * time.Minute,
 			retry:             mirror.Retry,
 			timeout:           time.Duration(mirror.Timeout) * time.Second,
+
+			uid: cfg.Global.Uid,
+			gid: cfg.Global.Gid,
 		}
 		p, err := newRsyncProvider(rc)
 		if err != nil {
@@ -183,6 +189,9 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 			interval:          time.Duration(mirror.Interval) * time.Minute,
 			retry:             mirror.Retry,
 			timeout:           time.Duration(mirror.Timeout) * time.Second,
+
+			uid: cfg.Global.Uid,
+			gid: cfg.Global.Gid,
 		}
 		p, err := newTwoStageRsyncProvider(rc)
 		if err != nil {

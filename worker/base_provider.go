@@ -27,6 +27,9 @@ type baseProvider struct {
 	docker *dockerHook
 
 	hooks []jobHook
+
+	uid int
+	gid int
 }
 
 func (p *baseProvider) Name() string {
