@@ -41,7 +41,6 @@ type Config struct {
 	Manager       managerConfig       `toml:"manager"`
 	Server        serverConfig        `toml:"server"`
 	Cgroup        cgroupConfig        `toml:"cgroup"`
-	ZFS           zfsConfig           `toml:"zfs"`
 	BtrfsSnapshot btrfsSnapshotConfig `toml:"btrfs_snapshot"`
 	Docker        dockerConfig        `toml:"docker"`
 	Include       includeConfig       `toml:"include"`
@@ -101,14 +100,11 @@ type dockerConfig struct {
 	Options []string `toml:"options"`
 }
 
-type zfsConfig struct {
-	Enable bool   `toml:"enable"`
-	Zpool  string `toml:"zpool"`
-}
-
 type btrfsSnapshotConfig struct {
-	Enable       bool   `toml:"enable"`
-	SnapshotPath string `toml:"snapshot_path"`
+	Enable         bool   `toml:"enable"`
+	ServePrefix    string `toml:"serve_prefix"`
+	WorkingPrefix  string `toml:"working_prefix"`
+	SnapshotPrefix string `toml:"snapshot_prefix"`
 }
 
 type includeConfig struct {
@@ -146,17 +142,16 @@ func (m *MemBytes) UnmarshalText(s []byte) error {
 }
 
 type mirrorConfig struct {
-	Name         string            `toml:"name"`
-	Provider     providerEnum      `toml:"provider"`
-	Upstream     string            `toml:"upstream"`
-	Interval     int               `toml:"interval"`
-	Retry        int               `toml:"retry"`
-	Timeout      int               `toml:"timeout"`
-	MirrorDir    string            `toml:"mirror_dir"`
-	MirrorSubDir string            `toml:"mirror_subdir"`
-	LogDir       string            `toml:"log_dir"`
-	Env          map[string]string `toml:"env"`
-	Role         string            `toml:"role"`
+	Name     string            `toml:"name"`
+	Provider providerEnum      `toml:"provider"`
+	Upstream string            `toml:"upstream"`
+	Interval int               `toml:"interval"`
+	Retry    int               `toml:"retry"`
+	Timeout  int               `toml:"timeout"`
+	Dir      string            `toml:"dir"`
+	LogDir   string            `toml:"log_dir"`
+	Env      map[string]string `toml:"env"`
+	Role     string            `toml:"role"`
 
 	// These two options over-write the global options
 	ExecOnSuccess []string `toml:"exec_on_success"`
@@ -185,8 +180,6 @@ type mirrorConfig struct {
 	DockerImage   string   `toml:"docker_image"`
 	DockerVolumes []string `toml:"docker_volumes"`
 	DockerOptions []string `toml:"docker_options"`
-
-	SnapshotPath string `toml:"snapshot_path"`
 
 	ChildMirrors []mirrorConfig `toml:"mirrors"`
 }

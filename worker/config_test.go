@@ -2,12 +2,12 @@ package worker
 
 import (
 	"fmt"
+	units "github.com/docker/go-units"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-	units "github.com/docker/go-units"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -134,7 +134,7 @@ use_ipv6 = true
 
 		m := cfg.Mirrors[0]
 		So(m.Name, ShouldEqual, "AOSP")
-		So(m.MirrorDir, ShouldEqual, "/data/git/AOSP")
+		So(m.Dir, ShouldEqual, "/data/git/AOSP")
 		So(m.Provider, ShouldEqual, provCommand)
 		So(m.Interval, ShouldEqual, 720)
 		So(m.Retry, ShouldEqual, 2)
@@ -143,22 +143,22 @@ use_ipv6 = true
 
 		m = cfg.Mirrors[1]
 		So(m.Name, ShouldEqual, "debian")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provTwoStageRsync)
-		So(m.MemoryLimit.Value(), ShouldEqual, 256 * units.MiB)
+		So(m.MemoryLimit.Value(), ShouldEqual, 256*units.MiB)
 
 		m = cfg.Mirrors[2]
 		So(m.Name, ShouldEqual, "fedora")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provRsync)
 		So(m.ExcludeFile, ShouldEqual, "/etc/tunasync.d/fedora-exclude.txt")
-		So(m.MemoryLimit.Value(), ShouldEqual,  128 * units.MiB)
+		So(m.MemoryLimit.Value(), ShouldEqual, 128*units.MiB)
 
 		m = cfg.Mirrors[3]
 		So(m.Name, ShouldEqual, "debian-cd")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provTwoStageRsync)
-		So(m.MemoryLimit.Value(), ShouldEqual,  0)
+		So(m.MemoryLimit.Value(), ShouldEqual, 0)
 
 		m = cfg.Mirrors[4]
 		So(m.Name, ShouldEqual, "debian-security")
@@ -227,7 +227,7 @@ use_ipv6 = true
 
 		m := cfg.Mirrors[0]
 		So(m.Name, ShouldEqual, "AOSP")
-		So(m.MirrorDir, ShouldEqual, "/data/git/AOSP")
+		So(m.Dir, ShouldEqual, "/data/git/AOSP")
 		So(m.Provider, ShouldEqual, provCommand)
 		So(m.Interval, ShouldEqual, 720)
 		So(m.Retry, ShouldEqual, 2)
@@ -235,25 +235,25 @@ use_ipv6 = true
 
 		m = cfg.Mirrors[1]
 		So(m.Name, ShouldEqual, "debian")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provTwoStageRsync)
 
 		m = cfg.Mirrors[2]
 		So(m.Name, ShouldEqual, "fedora")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provRsync)
 		So(m.ExcludeFile, ShouldEqual, "/etc/tunasync.d/fedora-exclude.txt")
 
 		m = cfg.Mirrors[3]
 		So(m.Name, ShouldEqual, "debian-security")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provTwoStageRsync)
 		So(m.UseIPv6, ShouldEqual, true)
 		So(m.Stage1Profile, ShouldEqual, "debian")
 
 		m = cfg.Mirrors[4]
 		So(m.Name, ShouldEqual, "ubuntu")
-		So(m.MirrorDir, ShouldEqual, "")
+		So(m.Dir, ShouldEqual, "")
 		So(m.Provider, ShouldEqual, provTwoStageRsync)
 		So(m.UseIPv6, ShouldEqual, true)
 		So(m.Stage1Profile, ShouldEqual, "ubuntu")

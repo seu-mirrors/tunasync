@@ -87,10 +87,12 @@ func (m *mirrorJob) SetProvider(provider mirrorProvider) error {
 
 // runMirrorJob is the goroutine where syncing job runs in
 // arguments:
-//    provider: mirror provider object
-//    ctrlChan: receives messages from the manager
-//    managerChan: push messages to the manager, this channel should have a larger buffer
-//    sempaphore: make sure the concurrent running syncing job won't explode
+//
+//	provider: mirror provider object
+//	ctrlChan: receives messages from the manager
+//	managerChan: push messages to the manager, this channel should have a larger buffer
+//	sempaphore: make sure the concurrent running syncing job won't explode
+//
 // TODO: message struct for managerChan
 func (m *mirrorJob) Run(managerChan chan<- jobMessage, semaphore chan empty) error {
 	jobsDone.Add(1)
@@ -145,6 +147,7 @@ func (m *mirrorJob) Run(managerChan chan<- jobMessage, semaphore chan empty) err
 			if retry > 0 {
 				logger.Noticef("retry syncing: %s, retry: %d", m.Name(), retry)
 			}
+			logger.Debug("hooks: pre-exec")
 			err := runHooks(Hooks, func(h jobHook) error { return h.preExec() }, "pre-exec")
 			if err != nil {
 				return err
@@ -282,7 +285,7 @@ func (m *mirrorJob) Run(managerChan chan<- jobMessage, semaphore chan empty) err
 					time.Sleep(time.Second) // Restart may fail if the process was not exited yet
 					continue
 				case jobForceStart:
-					select { //non-blocking
+					select { // non-blocking
 					default:
 					case bypassSemaphore <- empty{}:
 					}
@@ -311,7 +314,7 @@ func (m *mirrorJob) Run(managerChan chan<- jobMessage, semaphore chan empty) err
 			m.SetState(stateDisabled)
 			return nil
 		case jobForceStart:
-			select { //non-blocking
+			select { // non-blocking
 			default:
 			case bypassSemaphore <- empty{}:
 			}

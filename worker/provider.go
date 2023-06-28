@@ -69,20 +69,25 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 		if err != nil {
 			panic(err)
 		}
-		var formatedLogDir bytes.Buffer
-		tmpl.Execute(&formatedLogDir, m)
-		return formatedLogDir.String()
+		var formattedLogDir bytes.Buffer
+		tmpl.Execute(&formattedLogDir, m)
+		return formattedLogDir.String()
 	}
 
 	logDir := mirror.LogDir
-	mirrorDir := mirror.MirrorDir
+	if mirror.Dir == "" {
+		mirror.Dir = mirror.Name
+	}
+	workingDir := filepath.Join(
+		cfg.Global.MirrorDir, mirror.Dir,
+	)
+	pBtrfsConfig := &providerBtrfsSnapshotConfig{}
+	if cfg.BtrfsSnapshot.Enable {
+		pBtrfsConfig = newProviderBtrfsSnapshotConfig(cfg.Global.MirrorDir, cfg.BtrfsSnapshot, mirror)
+		workingDir = pBtrfsConfig.mirrorWorkingDir
+	}
 	if logDir == "" {
 		logDir = cfg.Global.LogDir
-	}
-	if mirrorDir == "" {
-		mirrorDir = filepath.Join(
-			cfg.Global.MirrorDir, mirror.MirrorSubDir, mirror.Name,
-		)
 	}
 	if mirror.Interval == 0 {
 		mirror.Interval = cfg.Global.Interval
@@ -113,7 +118,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 			name:        mirror.Name,
 			upstreamURL: mirror.Upstream,
 			command:     mirror.Command,
-			workingDir:  mirrorDir,
+			workingDir:  workingDir,
 			failOnMatch: mirror.FailOnMatch,
 			sizePattern: mirror.SizePattern,
 			logDir:      logDir,
@@ -142,7 +147,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 			rsyncTimeoutValue: mirror.RsyncTimeout,
 			overriddenOptions: mirror.RsyncOverride,
 			rsyncEnv:          mirror.Env,
-			workingDir:        mirrorDir,
+			workingDir:        workingDir,
 			logDir:            logDir,
 			logFile:           filepath.Join(logDir, "latest.log"),
 			useIPv6:           mirror.UseIPv6,
@@ -170,7 +175,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 			rsyncNeverTimeout: mirror.RsyncNoTimeo,
 			rsyncTimeoutValue: mirror.RsyncTimeout,
 			rsyncEnv:          mirror.Env,
-			workingDir:        mirrorDir,
+			workingDir:        workingDir,
 			logDir:            logDir,
 			logFile:           filepath.Join(logDir, "latest.log"),
 			useIPv6:           mirror.UseIPv6,
@@ -194,7 +199,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 
 	// Add Btrfs Snapshot Hook
 	if cfg.BtrfsSnapshot.Enable {
-		provider.AddHook(newBtrfsSnapshotHook(provider, cfg.BtrfsSnapshot.SnapshotPath, mirror))
+		provider.AddHook(newBtrfsSnapshotHook(provider, *pBtrfsConfig))
 	}
 
 	// Add Docker Hook

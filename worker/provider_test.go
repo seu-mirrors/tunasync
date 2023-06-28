@@ -300,7 +300,7 @@ func TestRsyncProviderWithDocker(t *testing.T) {
 			ExcludeFile: excludeFile,
 			DockerImage: "alpine:3.8",
 			LogDir:      tmpDir,
-			MirrorDir:   tmpDir,
+			Dir:         tmpDir,
 			UseIPv6:     true,
 			Timeout:     100,
 			Interval:    600,
@@ -310,7 +310,7 @@ func TestRsyncProviderWithDocker(t *testing.T) {
 
 		So(provider.Type(), ShouldEqual, provRsync)
 		So(provider.Name(), ShouldEqual, c.Name)
-		So(provider.WorkingDir(), ShouldEqual, c.MirrorDir)
+		So(provider.WorkingDir(), ShouldEqual, c.Dir)
 		So(provider.LogDir(), ShouldEqual, c.LogDir)
 
 		cmdScriptContent := `#!/bin/sh
