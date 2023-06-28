@@ -197,6 +197,9 @@ func (h *btrfsSnapshotHook) preExec() error {
 		return err
 	}
 	logger.Noticef("created new Btrfs working snapshot %s", workingDir)
+	if err := os.Chown(workingDir, h.config.uid, h.config.gid); err != nil {
+		logger.Warningf("failed to chown %s to %d:%d: %s", workingDir, h.config.uid, h.config.gid, err.Error())
+	}
 
 	return nil
 }
@@ -248,7 +251,7 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 		logger.Errorf("failed to read dir %s: %s", h.config.mirrorSnapshotDir, err.Error())
 	} else {
 		for _, entry := range snapshotEntries {
-			if entry.Name()[0] == '@' && entry.Name() != filepath.Base(newSnapshotPath) {
+			if (entry.Name()[0] == '@' && entry.Name() != filepath.Base(newSnapshotPath)) || entry.Name() == "base" {
 				snapshotDir := filepath.Join(h.config.mirrorSnapshotDir, entry.Name())
 				if is, err := btrfs.IsSubVolume(snapshotDir); err != nil {
 					logger.Errorf("failed to check if %s is a Btrfs subvolume: %s", snapshotDir, err.Error())
