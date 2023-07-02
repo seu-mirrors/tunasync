@@ -200,27 +200,27 @@ func (h *btrfsSnapshotHook) preExec() error {
 	}
 
 	if _, err := os.Stat(workingDir); err == nil {
-		if is, err := btrfs.IsSubVolume(workingDir); err != nil {
+		// if is, err := btrfs.IsSubVolume(workingDir); err != nil {
+		// 	return err
+		// } else if !is {
+		// 	return fmt.Errorf("workingDir %s exists but isn't a Btrfs subvolume", workingDir)
+		// } else {
+		// 	logger.Noticef("Btrfs working snapshot %s exists, removing", workingDir)
+		// 	if err := tryDeleteSubvolume(workingDir); err != nil {
+		// 		return err
+		// 	}
+		// }
+		logger.Noticef("Btrfs working snapshot %s exists", workingDir)
+	} else if os.IsNotExist(err) {
+		// create rw temp snapshot
+		if err := tryCreateSnapshot(latestSnapshot, workingDir, false); err != nil {
 			return err
-		} else if !is {
-			return fmt.Errorf("workingDir %s exists but isn't a Btrfs subvolume", workingDir)
-		} else {
-			logger.Noticef("Btrfs working snapshot %s exists, removing", workingDir)
-			if err := tryDeleteSubvolume(workingDir); err != nil {
-				return err
-			}
 		}
-	} else if !os.IsNotExist(err) {
+		if err := os.Chown(workingDir, h.config.uid, h.config.gid); err != nil {
+			logger.Warningf("failed to chown %s to %d:%d: %s", workingDir, h.config.uid, h.config.gid, err.Error())
+		}
+	} else {
 		return err
-	}
-
-	// create rw temp snapshot
-	err = tryCreateSnapshot(latestSnapshot, workingDir, false)
-	if err != nil {
-		return err
-	}
-	if err := os.Chown(workingDir, h.config.uid, h.config.gid); err != nil {
-		logger.Warningf("failed to chown %s to %d:%d: %s", workingDir, h.config.uid, h.config.gid, err.Error())
 	}
 
 	return nil
