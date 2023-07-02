@@ -266,9 +266,9 @@ func TestHTTPServer(t *testing.T) {
 
 				Convey("Update schedule of valid mirrors", func(ctx C) {
 					msg := MirrorSchedules{
-						[]MirrorSchedule{
-							MirrorSchedule{"arch-sync1", time.Now().Add(time.Minute * 10)},
-							MirrorSchedule{"arch-sync2", time.Now().Add(time.Minute * 7)},
+						Schedules: []MirrorSchedule{
+							{MirrorName: "arch-sync1", NextSchedule: time.Now().Add(time.Minute * 10)},
+							{MirrorName: "arch-sync2", NextSchedule: time.Now().Add(time.Minute * 7)},
 						},
 					}
 
@@ -344,9 +344,9 @@ func TestHTTPServer(t *testing.T) {
 			Convey("update schedule of an non-existent worker", func(ctx C) {
 				invalidWorker := "test_worker2"
 				sch := MirrorSchedules{
-					[]MirrorSchedule{
-						MirrorSchedule{"arch-sync1", time.Now().Add(time.Minute * 10)},
-						MirrorSchedule{"arch-sync2", time.Now().Add(time.Minute * 7)},
+					Schedules: []MirrorSchedule{
+						{MirrorName: "arch-sync1", NextSchedule: time.Now().Add(time.Minute * 10)},
+						{MirrorName: "arch-sync2", NextSchedule: time.Now().Add(time.Minute * 7)},
 					},
 				}
 				resp, err := PostJSON(fmt.Sprintf("%s/workers/%s/schedules",

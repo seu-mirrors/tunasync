@@ -2,13 +2,13 @@ package worker
 
 import (
 	"fmt"
+	units "github.com/docker/go-units"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
-	units "github.com/docker/go-units"
 
 	"github.com/codeskyblue/go-sh"
 	. "github.com/smartystreets/goconvey/convey"
