@@ -37,6 +37,39 @@ type providerBtrfsSnapshotConfig struct {
 	gid int
 }
 
+func tryCreateSubvolume(path string) error {
+	err := btrfs.CreateSubVolume(path)
+	if err != nil {
+		logger.Errorf("failed to create Btrfs subvolume %s: %s", path, err.Error())
+	} else {
+		logger.Noticef("created new Btrfs subvolume %s", path)
+	}
+
+	return err
+}
+
+func tryCreateSnapshot(from, to string, ro bool) error {
+	err := btrfs.SnapshotSubVolume(from, to, ro)
+	if err != nil {
+		logger.Errorf("failed to create Btrfs snapshot %s from %s: %s", to, from, err.Error())
+	} else {
+		logger.Noticef("created new Btrfs snapshot %s from %s", to, from)
+	}
+
+	return err
+}
+
+func tryDeleteSubvolume(path string) error {
+	err := btrfs.DeleteSubVolume(path)
+	if err != nil {
+		logger.Errorf("failed to delete Btrfs subvolume %s: %s", path, err.Error())
+	} else {
+		logger.Noticef("deleted Btrfs subvolume %s", path)
+	}
+
+	return err
+}
+
 // initialize and create dir / subvolume if needed
 func newProviderBtrfsSnapshotConfig(mirrorDir string, btrfsConfig btrfsSnapshotConfig, mirror mirrorConfig, uid, gid int) *providerBtrfsSnapshotConfig {
 	c := &providerBtrfsSnapshotConfig{
@@ -86,11 +119,7 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, btrfsConfig btrfsSnapshotC
 
 	// create [btrfs]/snapshot/[mirror_name]/base subvolume if not exist
 	if _, err := os.Stat(filepath.Join(c.mirrorSnapshotDir, "base")); os.IsNotExist(err) {
-		err := btrfs.CreateSubVolume(filepath.Join(c.mirrorSnapshotDir, "base"))
-		if err != nil {
-			logger.Errorf("failed to create Btrfs subvolume %s: %s", filepath.Join(c.mirrorSnapshotDir, "base"), err.Error())
-		}
-		logger.Noticef("created new Btrfs subvolume %s", filepath.Join(c.mirrorSnapshotDir, "base"))
+		_ = tryCreateSubvolume(filepath.Join(c.mirrorSnapshotDir, "base"))
 	} else {
 		if is, err := btrfs.IsSubVolume(filepath.Join(c.mirrorSnapshotDir, "base")); err != nil {
 			logger.Errorf("failed to check if %s is a Btrfs subvolume: %s", filepath.Join(c.mirrorSnapshotDir, "base"), err.Error())
@@ -122,11 +151,7 @@ func (c *providerBtrfsSnapshotConfig) LatestSnapshot() (string, error) {
 	if len(snapshots) == 0 {
 		snapshotName := c.NewSnapshotName()
 		snapshotDir := filepath.Join(c.mirrorSnapshotDir, snapshotName)
-		err := btrfs.SnapshotSubVolume(filepath.Join(c.mirrorSnapshotDir, "base"), snapshotDir, true)
-		if err != nil {
-			logger.Errorf("failed to create Btrfs snapshot %s: %s", snapshotDir, err.Error())
-		}
-		logger.Noticef("created new Btrfs snapshot %s", snapshotDir)
+		err := tryCreateSnapshot(filepath.Join(c.mirrorSnapshotDir, "base"), snapshotDir, true)
 		return snapshotName, err
 	}
 
@@ -181,8 +206,7 @@ func (h *btrfsSnapshotHook) preExec() error {
 			return fmt.Errorf("workingDir %s exists but isn't a Btrfs subvolume", workingDir)
 		} else {
 			logger.Noticef("Btrfs working snapshot %s exists, removing", workingDir)
-			if err := btrfs.DeleteSubVolume(workingDir); err != nil {
-				logger.Errorf("failed to delete Btrfs working snapshot %s: %s", workingDir, err.Error())
+			if err := tryDeleteSubvolume(workingDir); err != nil {
 				return err
 			}
 		}
@@ -191,12 +215,10 @@ func (h *btrfsSnapshotHook) preExec() error {
 	}
 
 	// create rw temp snapshot
-	err = btrfs.SnapshotSubVolume(latestSnapshot, workingDir, false)
+	err = tryCreateSnapshot(latestSnapshot, workingDir, false)
 	if err != nil {
-		logger.Errorf("failed to create Btrfs working snapshot %s: %s", workingDir, err.Error())
 		return err
 	}
-	logger.Noticef("created new Btrfs working snapshot %s", workingDir)
 	if err := os.Chown(workingDir, h.config.uid, h.config.gid); err != nil {
 		logger.Warningf("failed to chown %s to %d:%d: %s", workingDir, h.config.uid, h.config.gid, err.Error())
 	}
@@ -217,12 +239,10 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 	newSnapshotPath := filepath.Join(h.config.mirrorSnapshotDir, newSnapshot)
 
 	// create ro snapshot
-	err := btrfs.SnapshotSubVolume(workingDir, newSnapshotPath, true)
+	err := tryCreateSnapshot(workingDir, newSnapshotPath, true)
 	if err != nil {
-		logger.Errorf("failed to create new Btrfs ro snapshot %s: %s", newSnapshotPath, err.Error())
 		return err
 	}
-	logger.Noticef("created new Btrfs ro snapshot %s", newSnapshotPath)
 
 	// update symlink
 	if err := os.Remove(h.config.mirrorServeDir + ".tmp"); err != nil && !os.IsNotExist(err) {
@@ -240,8 +260,7 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 	logger.Noticef("updated symlink %s", h.config.mirrorServeDir)
 
 	// delete working snapshot
-	if err := btrfs.DeleteSubVolume(workingDir); err != nil {
-		logger.Errorf("failed to delete Btrfs working snapshot %s: %s", workingDir, err.Error())
+	if err := tryDeleteSubvolume(workingDir); err != nil {
 		return err
 	}
 
@@ -259,9 +278,7 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 					logger.Errorf("%s is not a Btrfs subvolume", snapshotDir)
 				} else {
 					logger.Noticef("deleting old Btrfs snapshot %s", snapshotDir)
-					if err := btrfs.DeleteSubVolume(snapshotDir); err != nil {
-						logger.Errorf("failed to delete Btrfs snapshot %s: %s", snapshotDir, err.Error())
-					}
+					_ = tryDeleteSubvolume(snapshotDir)
 				}
 			}
 		}
@@ -273,10 +290,6 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 // delete working snapshot
 func (h *btrfsSnapshotHook) postFail() error {
 	workingDir := h.config.mirrorWorkingDir
-	err := btrfs.DeleteSubVolume(workingDir)
-	if err != nil {
-		logger.Errorf("failed to delete Btrfs working snapshot %s: %s", workingDir, err.Error())
-	}
 
-	return err
+	return tryDeleteSubvolume(workingDir)
 }
