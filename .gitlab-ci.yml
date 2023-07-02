@@ -14,6 +14,7 @@ format:
 compile:
   stage: build
   script:
+    - go env -w GOPROXY=https://goproxy.cn,direct
     - make tunasync
     - make tunasynctl
   artifacts:
