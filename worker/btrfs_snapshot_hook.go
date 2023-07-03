@@ -117,17 +117,6 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, btrfsConfig btrfsSnapshotC
 		}
 	}
 
-	// create [btrfs]/snapshot/[mirror_name]/base subvolume if not exist
-	if _, err := os.Stat(filepath.Join(c.mirrorSnapshotDir, "base")); os.IsNotExist(err) {
-		_ = tryCreateSubvolume(filepath.Join(c.mirrorSnapshotDir, "base"))
-	} else {
-		if is, err := btrfs.IsSubVolume(filepath.Join(c.mirrorSnapshotDir, "base")); err != nil {
-			logger.Errorf("failed to check if %s is a Btrfs subvolume: %s", filepath.Join(c.mirrorSnapshotDir, "base"), err.Error())
-		} else if !is {
-			logger.Errorf("%s is not a Btrfs subvolume", filepath.Join(c.mirrorSnapshotDir, "base"))
-		}
-	}
-
 	if _, err := c.LatestSnapshot(); err != nil {
 		logger.Errorf("failed to get latest Btrfs snapshot for: %s", mirror.Name, err.Error())
 	}
@@ -149,6 +138,19 @@ func (c *providerBtrfsSnapshotConfig) LatestSnapshot() (string, error) {
 	}
 
 	if len(snapshots) == 0 {
+		// create [btrfs]/snapshot/[mirror_name]/base subvolume if not exist
+		if _, err := os.Stat(filepath.Join(c.mirrorSnapshotDir, "base")); os.IsNotExist(err) {
+			if err := tryCreateSubvolume(filepath.Join(c.mirrorSnapshotDir, "base")); err != nil {
+				return "", fmt.Errorf("failed to create Btrfs subvolume: %s", err.Error())
+			}
+		} else {
+			if is, err := btrfs.IsSubVolume(filepath.Join(c.mirrorSnapshotDir, "base")); err != nil {
+				return "", fmt.Errorf("failed to check if %s is a Btrfs subvolume: %s", filepath.Join(c.mirrorSnapshotDir, "base"), err.Error())
+			} else if !is {
+				return "", fmt.Errorf("%s is not a Btrfs subvolume", filepath.Join(c.mirrorSnapshotDir, "base"))
+			}
+		}
+
 		snapshotName := c.NewSnapshotName()
 		snapshotDir := filepath.Join(c.mirrorSnapshotDir, snapshotName)
 		err := tryCreateSnapshot(filepath.Join(c.mirrorSnapshotDir, "base"), snapshotDir, true)
