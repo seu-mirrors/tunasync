@@ -10,19 +10,20 @@ import (
 )
 
 type rsyncConfig struct {
-	name                                         string
-	rsyncCmd                                     string
-	upstreamURL, username, password, excludeFile string
-	extraOptions                                 []string
-	overriddenOptions                            []string
-	rsyncNeverTimeout                            bool
-	rsyncTimeoutValue                            int
-	rsyncEnv                                     map[string]string
-	workingDir, logDir, logFile                  string
-	useIPv6, useIPv4                             bool
-	interval                                     time.Duration
-	retry                                        int
-	timeout                                      time.Duration
+	name                            string
+	rsyncCmd                        string
+	upstreamURL, username, password string
+	excludeFile, includeFile        string
+	extraOptions                    []string
+	overriddenOptions               []string
+	rsyncNeverTimeout               bool
+	rsyncTimeoutValue               int
+	rsyncEnv                        map[string]string
+	workingDir, logDir, logFile     string
+	useIPv6, useIPv4                bool
+	interval                        time.Duration
+	retry                           int
+	timeout                         time.Duration
 
 	uid int
 	gid int
@@ -94,6 +95,9 @@ func newRsyncProvider(c rsyncConfig) (*rsyncProvider, error) {
 
 	if c.excludeFile != "" {
 		options = append(options, "--exclude-from", c.excludeFile)
+	}
+	if c.includeFile != "" {
+		options = append(options, "--include-from", c.includeFile)
 	}
 	if c.extraOptions != nil {
 		options = append(options, c.extraOptions...)

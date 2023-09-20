@@ -173,6 +173,7 @@ type mirrorConfig struct {
 	UseIPv6       bool     `toml:"use_ipv6"`
 	UseIPv4       bool     `toml:"use_ipv4"`
 	ExcludeFile   string   `toml:"exclude_file"`
+	IncludeFile   string   `toml:"include_file"`
 	Username      string   `toml:"username"`
 	Password      string   `toml:"password"`
 	RsyncNoTimeo  bool     `toml:"rsync_no_timeout"`
