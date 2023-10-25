@@ -28,7 +28,7 @@ type providerBtrfsSnapshotConfig struct {
 	mirrorServeDir string
 	// created rw subvolume for syncing, and should only exist when syncing
 	// case: succeeded => create a new ro snapshot (@[timestamp]), update the soft link and delete the previous one
-	// case: failed => delete the rw subvolume
+	// case: failed => ~~delete the rw subvolume~~ keep it to resume progress
 	mirrorWorkingDir string
 	// store all ro snapshots
 	mirrorSnapshotDir string
@@ -189,12 +189,8 @@ func newBtrfsSnapshotHook(provider mirrorProvider, config providerBtrfsSnapshotC
 	}
 }
 
+// create a new rw Btrfs working snapshot before first attempt
 func (h *btrfsSnapshotHook) preJob() error {
-	return nil
-}
-
-// create a new rw Btrfs working snapshot for every sync attempt
-func (h *btrfsSnapshotHook) preExec() error {
 	workingDir := h.config.mirrorWorkingDir
 	latestSnapshot, err := h.config.LatestSnapshotPath()
 	if err != nil {
@@ -202,17 +198,7 @@ func (h *btrfsSnapshotHook) preExec() error {
 	}
 
 	if _, err := os.Stat(workingDir); err == nil {
-		// if is, err := btrfs.IsSubVolume(workingDir); err != nil {
-		// 	return err
-		// } else if !is {
-		// 	return fmt.Errorf("workingDir %s exists but isn't a Btrfs subvolume", workingDir)
-		// } else {
-		// 	logger.Noticef("Btrfs working snapshot %s exists, removing", workingDir)
-		// 	if err := tryDeleteSubvolume(workingDir); err != nil {
-		// 		return err
-		// 	}
-		// }
-		logger.Noticef("Btrfs working snapshot %s exists", workingDir)
+		logger.Noticef("Btrfs working snapshot %s exists, resuming", workingDir)
 	} else if os.IsNotExist(err) {
 		// create rw temp snapshot
 		if err := tryCreateSnapshot(latestSnapshot, workingDir, false); err != nil {
@@ -225,6 +211,10 @@ func (h *btrfsSnapshotHook) preExec() error {
 		return err
 	}
 
+	return nil
+}
+
+func (h *btrfsSnapshotHook) preExec() error {
 	return nil
 }
 
@@ -289,9 +279,11 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 	return nil
 }
 
-// delete working snapshot
 func (h *btrfsSnapshotHook) postFail() error {
-	workingDir := h.config.mirrorWorkingDir
+	// workingDir := h.config.mirrorWorkingDir
+	//
+	// return tryDeleteSubvolume(workingDir)
 
-	return tryDeleteSubvolume(workingDir)
+	// Just keep the working snapshot to resume progress, rsync will handle it
+	return nil
 }
