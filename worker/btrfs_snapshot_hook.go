@@ -229,9 +229,13 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 	workingDir := h.config.mirrorWorkingDir
 	newSnapshot := h.config.NewSnapshotName()
 	newSnapshotPath := filepath.Join(h.config.mirrorSnapshotDir, newSnapshot)
+	relativePath, err := filepath.Rel(h.config.mirrorServeDir, newSnapshotPath)
+	if err != nil {
+		return err
+	}
 
 	// create ro snapshot
-	err := tryCreateSnapshot(workingDir, newSnapshotPath, true)
+	err = tryCreateSnapshot(workingDir, newSnapshotPath, true)
 	if err != nil {
 		return err
 	}
@@ -241,7 +245,7 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 		logger.Errorf("failed to remove symlink %s: %s", h.config.mirrorServeDir+".tmp", err.Error())
 		return err
 	}
-	if err := os.Symlink(newSnapshotPath, h.config.mirrorServeDir+".tmp"); err != nil {
+	if err := os.Symlink(relativePath, h.config.mirrorServeDir+".tmp"); err != nil {
 		logger.Errorf("failed to create symlink %s: %s", h.config.mirrorServeDir+".tmp", err.Error())
 		return err
 	}
