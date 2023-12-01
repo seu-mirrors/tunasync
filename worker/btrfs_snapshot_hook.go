@@ -229,7 +229,7 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 	workingDir := h.config.mirrorWorkingDir
 	newSnapshot := h.config.NewSnapshotName()
 	newSnapshotPath := filepath.Join(h.config.mirrorSnapshotDir, newSnapshot)
-	relativePath, err := filepath.Rel(h.config.mirrorServeDir, newSnapshotPath)
+	relativePath, err := filepath.Rel(filepath.Dir(h.config.mirrorServeDir), newSnapshotPath)
 	if err != nil {
 		return err
 	}
