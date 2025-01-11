@@ -180,9 +180,9 @@ func TestHTTPServer(t *testing.T) {
 					So(m.Upstream, ShouldEqual, status.Upstream)
 					So(m.Size, ShouldEqual, status.Size)
 					So(m.IsMaster, ShouldEqual, status.IsMaster)
-					So(time.Now().Sub(m.LastUpdate), ShouldBeLessThan, 1*time.Second)
+					So(time.Since(m.LastUpdate), ShouldBeLessThan, 1*time.Second)
 					So(m.LastStarted.IsZero(), ShouldBeTrue) // hasn't been initialized yet
-					So(time.Now().Sub(m.LastEnded), ShouldBeLessThan, 1*time.Second)
+					So(time.Since(m.LastEnded), ShouldBeLessThan, 1*time.Second)
 
 				})
 
@@ -208,11 +208,11 @@ func TestHTTPServer(t *testing.T) {
 					So(m.Upstream, ShouldEqual, status.Upstream)
 					So(m.Size, ShouldEqual, status.Size)
 					So(m.IsMaster, ShouldEqual, status.IsMaster)
-					So(time.Now().Sub(m.LastUpdate), ShouldBeLessThan, 3*time.Second)
-					So(time.Now().Sub(m.LastUpdate), ShouldBeGreaterThan, 1*time.Second)
-					So(time.Now().Sub(m.LastStarted), ShouldBeLessThan, 2*time.Second)
-					So(time.Now().Sub(m.LastEnded), ShouldBeLessThan, 3*time.Second)
-					So(time.Now().Sub(m.LastEnded), ShouldBeGreaterThan, 1*time.Second)
+					So(time.Since(m.LastUpdate), ShouldBeLessThan, 3*time.Second)
+					So(time.Since(m.LastUpdate), ShouldBeGreaterThan, 1*time.Second)
+					So(time.Since(m.LastStarted), ShouldBeLessThan, 2*time.Second)
+					So(time.Since(m.LastEnded), ShouldBeLessThan, 3*time.Second)
+					So(time.Since(m.LastEnded), ShouldBeGreaterThan, 1*time.Second)
 
 				})
 
@@ -228,9 +228,9 @@ func TestHTTPServer(t *testing.T) {
 					So(m.Upstream, ShouldEqual, status.Upstream)
 					So(m.Size, ShouldEqual, status.Size)
 					So(m.IsMaster, ShouldEqual, status.IsMaster)
-					So(time.Now().Sub(m.LastUpdate.Time), ShouldBeLessThan, 3*time.Second)
-					So(time.Now().Sub(m.LastStarted.Time), ShouldBeLessThan, 2*time.Second)
-					So(time.Now().Sub(m.LastEnded.Time), ShouldBeLessThan, 3*time.Second)
+					So(time.Since(m.LastUpdate.Time), ShouldBeLessThan, 3*time.Second)
+					So(time.Since(m.LastStarted.Time), ShouldBeLessThan, 2*time.Second)
+					So(time.Since(m.LastEnded.Time), ShouldBeLessThan, 3*time.Second)
 
 				})
 
@@ -259,9 +259,9 @@ func TestHTTPServer(t *testing.T) {
 						So(m.Upstream, ShouldEqual, status.Upstream)
 						So(m.Size, ShouldEqual, "5GB")
 						So(m.IsMaster, ShouldEqual, status.IsMaster)
-						So(time.Now().Sub(m.LastUpdate), ShouldBeLessThan, 3*time.Second)
-						So(time.Now().Sub(m.LastStarted), ShouldBeLessThan, 2*time.Second)
-						So(time.Now().Sub(m.LastEnded), ShouldBeLessThan, 3*time.Second)
+						So(time.Since(m.LastUpdate), ShouldBeLessThan, 3*time.Second)
+						So(time.Since(m.LastStarted), ShouldBeLessThan, 2*time.Second)
+						So(time.Since(m.LastEnded), ShouldBeLessThan, 3*time.Second)
 					})
 				})
 
@@ -313,9 +313,9 @@ func TestHTTPServer(t *testing.T) {
 					So(m.Upstream, ShouldEqual, status.Upstream)
 					So(m.Size, ShouldEqual, status.Size)
 					So(m.IsMaster, ShouldEqual, status.IsMaster)
-					So(time.Now().Sub(m.LastUpdate), ShouldBeGreaterThan, 3*time.Second)
-					So(time.Now().Sub(m.LastStarted), ShouldBeGreaterThan, 3*time.Second)
-					So(time.Now().Sub(m.LastEnded), ShouldBeLessThan, 1*time.Second)
+					So(time.Since(m.LastUpdate), ShouldBeGreaterThan, 3*time.Second)
+					So(time.Since(m.LastStarted), ShouldBeGreaterThan, 3*time.Second)
+					So(time.Since(m.LastEnded), ShouldBeLessThan, 1*time.Second)
 				})
 			})
 
