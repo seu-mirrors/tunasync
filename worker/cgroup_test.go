@@ -2,11 +2,6 @@ package worker
 
 import (
 	"errors"
-	cgv1 "github.com/containerd/cgroups"
-	cgv2 "github.com/containerd/cgroups/v2"
-	units "github.com/docker/go-units"
-	"github.com/moby/moby/pkg/reexec"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +10,11 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	cgv1 "github.com/containerd/cgroups"
+	cgv2 "github.com/containerd/cgroups/v2"
+	units "github.com/docker/go-units"
+	"github.com/moby/moby/pkg/reexec"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -98,7 +98,7 @@ func TestCgroup(t *testing.T) {
 		}
 
 		Convey("Cgroup Should Work", func(ctx C) {
-			tmpDir, err := ioutil.TempDir("", "tunasync")
+			tmpDir, err := os.MkdirTemp("", "tunasync")
 			defer os.RemoveAll(tmpDir)
 			So(err, ShouldBeNil)
 			cmdScript := filepath.Join(tmpDir, "cmd.sh")
@@ -148,9 +148,9 @@ sleep 5
 echo $$ > $BG_PIDFILE
 sleep 30
 `
-			err = ioutil.WriteFile(cmdScript, []byte(cmdScriptContent), 0755)
+			err = os.WriteFile(cmdScript, []byte(cmdScriptContent), 0755)
 			So(err, ShouldBeNil)
-			err = ioutil.WriteFile(daemonScript, []byte(daemonScriptContent), 0755)
+			err = os.WriteFile(daemonScript, []byte(daemonScriptContent), 0755)
 			So(err, ShouldBeNil)
 
 			provider, err := newCmdProvider(c)
@@ -169,7 +169,7 @@ sleep 30
 
 			time.Sleep(1 * time.Second)
 			// Deamon should be started
-			daemonPidBytes, err := ioutil.ReadFile(bgPidfile)
+			daemonPidBytes, err := os.ReadFile(bgPidfile)
 			So(err, ShouldBeNil)
 			daemonPid := strings.Trim(string(daemonPidBytes), " \n")
 			logger.Debug("daemon pid: %s", daemonPid)
@@ -192,7 +192,7 @@ sleep 30
 		})
 
 		Convey("Rsync Memory Should Be Limited", func() {
-			tmpDir, err := ioutil.TempDir("", "tunasync")
+			tmpDir, err := os.MkdirTemp("", "tunasync")
 			defer os.RemoveAll(tmpDir)
 			So(err, ShouldBeNil)
 			scriptFile := filepath.Join(tmpDir, "myrsync")
@@ -224,7 +224,7 @@ sleep 30
 					So(err, ShouldBeNil)
 					cgpath = filepath.Join(cgcf.BasePath, group)
 				}
-				memoLimit, err := ioutil.ReadFile(filepath.Join(cgpath, "memory.max"))
+				memoLimit, err := os.ReadFile(filepath.Join(cgpath, "memory.max"))
 				So(err, ShouldBeNil)
 				So(strings.Trim(string(memoLimit), "\n"), ShouldEqual, strconv.Itoa(512*1024*1024))
 			} else {
@@ -236,7 +236,7 @@ sleep 30
 							So(err, ShouldBeNil)
 							cgpath = p
 						}
-						memoLimit, err := ioutil.ReadFile(filepath.Join(cgcf.BasePath, "memory", cgpath, "memory.limit_in_bytes"))
+						memoLimit, err := os.ReadFile(filepath.Join(cgcf.BasePath, "memory", cgpath, "memory.limit_in_bytes"))
 						So(err, ShouldBeNil)
 						So(strings.Trim(string(memoLimit), "\n"), ShouldEqual, strconv.Itoa(512*1024*1024))
 					}

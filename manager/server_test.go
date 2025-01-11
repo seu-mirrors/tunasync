@@ -3,7 +3,7 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -36,7 +36,7 @@ func TestHTTPServer(t *testing.T) {
 		So(s, ShouldNotBeNil)
 		s.setDBAdapter(&mockDBAdapter{
 			workerStore: map[string]WorkerStatus{
-				_magicBadWorkerID: WorkerStatus{
+				_magicBadWorkerID: {
 					ID: _magicBadWorkerID,
 				}},
 			statusStore: make(map[string]MirrorStatus),
@@ -48,7 +48,7 @@ func TestHTTPServer(t *testing.T) {
 		So(resp.StatusCode, ShouldEqual, http.StatusOK)
 		So(resp.Header.Get("Content-Type"), ShouldEqual, "application/json; charset=utf-8")
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		So(err, ShouldBeNil)
 		var p map[string]string
 		err = json.Unmarshal(body, &p)

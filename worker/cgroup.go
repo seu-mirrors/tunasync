@@ -3,7 +3,7 @@ package worker
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,7 +46,7 @@ func waitExec() {
 	pipe := os.NewFile(3, "pipe")
 	if pipe != nil {
 		if _, err := pipe.Stat(); err == nil {
-			cmdBytes, err := ioutil.ReadAll(pipe)
+			cmdBytes, err := io.ReadAll(pipe)
 			if err != nil {
 				panic(err)
 			}
