@@ -10,12 +10,12 @@ jobs:
     steps:
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Go 1.20
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: "1.20"
+        go-version: "^1.22"
       id: go
 
     - name: Get dependencies
@@ -33,3 +33,210 @@ jobs:
       with:
         name: tunasync-bin
         path: build-linux-amd64/
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+
+    - name: Setup test dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cgroup-tools
+        docker pull alpine:3.8
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '^1.22'
+      id: go
+
+    - name: Run Unit tests.
+      run: |
+        go install github.com/wadey/gocovmerge@latest
+        sudo systemd-run --service-type=oneshot --uid="$(id --user)" --pipe --wait \
+          --property=Delegate=yes --setenv=USECURCGROUP=1 \
+          --setenv=TERM=xterm-256color --same-dir \
+          make test
+
+    - name: Run Additional Unit tests.
+      run: |
+        make build-test-worker
+        sudo mkdir /sys/fs/cgroup/tunasync
+        sudo ./worker.test -test.v=true -test.coverprofile profile2.gcov -test.run TestCgroup
+        sudo rmdir /sys/fs/cgroup/tunasync
+        touch /tmp/dummy_exec
+        chmod +x /tmp/dummy_exec
+        run_test_reexec (){
+          case="$1"
+          shift
+          argv0="$1"
+          shift
+          (TESTREEXEC="$case" TERM=xterm-256color exec -a "$argv0" ./worker.test -test.v=true -test.coverprofile "profile5_$case.gcov" -test.run TestReexec -- "$@")
+        }
+        run_test_reexec 1 tunasync-exec __dummy__
+        run_test_reexec 2 tunasync-exec /tmp/dummy_exec
+        run_test_reexec 3 tunasync-exec /tmp/dummy_exec 3< <(echo -n "abrt")
+        run_test_reexec 4 tunasync-exec /tmp/dummy_exec 3< <(echo -n "cont")
+        run_test_reexec 5 tunasync-exec2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        driver-opts: network=host
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      if: github.event_name == 'push'
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      if: github.event_name == 'pull_request'
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-pr-${{ github.event.pull_request.head.user.login }}-buildx-
+          ${{ runner.os }}-buildx-
+    - name: Cache Docker layers
+      if: github.event_name != 'push' && github.event_name != 'pull_request'
+      run: |
+        echo "I do not know how to setup cache"
+        exit -1
+
+    - name: Prepare cache directory
+      run: |
+        mkdir -p /tmp/.buildx-cache
+
+    - name: Build Docker image for uml rootfs
+      uses: docker/build-push-action@v6
+      with:
+        context: .umlrootfs
+        file: .umlrootfs/Dockerfile
+        push: true
+        tags: localhost:5000/umlrootfs
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache
+
+    - name: Fetch and install uml package
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y debian-archive-keyring
+        sudo ln -sf /usr/share/keyrings/debian-archive-keyring.gpg /etc/apt/trusted.gpg.d/
+        echo "deb http://deb.debian.org/debian bullseye main" | sudo tee /etc/apt/sources.list.d/bullseye.list
+        sudo apt-get update
+        apt-get download user-mode-linux/bullseye
+        sudo rm /etc/apt/sources.list.d/bullseye.list
+        sudo apt-get update
+        sudo mv user-mode-linux_*.deb /tmp/uml.deb
+        sudo apt-get install --no-install-recommends -y /tmp/uml.deb
+        sudo rm /tmp/uml.deb
+        sudo apt-get install --no-install-recommends -y rsh-redone-client
+
+    - name: Prepare uml environment
+      run: |
+        docker container create --name umlrootfs localhost:5000/umlrootfs
+        sudo mkdir -p umlrootfs
+        docker container export umlrootfs | sudo tar -xv -C umlrootfs
+        docker container rm umlrootfs
+        sudo cp -a --target-directory=umlrootfs/lib/ /usr/lib/uml/modules
+        /bin/echo -e "127.0.0.1       localhost\n254.255.255.1 host" | sudo tee umlrootfs/etc/hosts
+        sudo ip tuntap add dev umltap mode tap
+        sudo ip addr add 254.255.255.1/24 dev umltap
+        sudo ip link set umltap up
+
+    - name: Start Uml
+      run: |
+        start_uml () {
+          sudo bash -c 'linux root=/dev/root rootflags=/ rw rootfstype=hostfs mem=2G eth0=tuntap,umltap hostfs="$PWD/umlrootfs" con1=pts systemd.unified_cgroup_hierarchy=0 & pid=$!; echo "UMLINUX_PID=$pid" >> '"$GITHUB_ENV"
+        }
+        ( start_uml )
+        started=0
+        for i in $(seq 1 60); do
+          if ping -c 1 -w 1 254.255.255.2; then
+            started=1
+            break
+          fi
+        done
+        if [ "$started" != "1" ]; then
+          echo "Failed to wait Umlinux online"
+          exit 1
+        fi
+
+    - name: Prepare Uml Environment
+      run: |
+        CUSER="$(id --user --name)"
+        CUID="$(id --user)"
+        CGID="$(id --group)"
+        sudo chroot umlrootfs bash --noprofile --norc -eo pipefail << EOF
+          groupadd --gid "${CGID?}" "${CUSER?}"
+          useradd --create-home --home-dir "/home/${CUSER}" --gid "${CGID?}" \
+            --uid "${CUID?}" --shell "\$(which bash)" "${CUSER?}"
+        EOF
+        ln ./worker.test "umlrootfs/home/${CUSER}/worker.test"
+
+    - name: Run Tests in Cgroupv1
+      run: |
+        CUSER="$(id --user --name)"
+        sudo rsh 254.255.255.2 bash --noprofile --norc -eo pipefail << EOF
+          exec 2>&1
+          cd "/home/${CUSER}"
+          lssubsys -am
+          cgcreate -a "$CUSER" -t "$CUSER" -g cpu:tunasync
+          cgcreate -a "$CUSER" -t "$CUSER" -g memory:tunasync
+          TERM=xterm-256color ./worker.test -test.v=true -test.coverprofile \
+            profile3.gcov -test.run TestCgroup
+          cgexec -g "*:/" bash -c "echo 0 > /sys/fs/cgroup/systemd/tasks; exec sudo -u $CUSER env USECURCGROUP=1 TERM=xterm-256color cgexec -g cpu,memory:tunasync ./worker.test -test.v=true -test.coverprofile profile4.gcov -test.run TestCgroup"
+        EOF
+
+    - name: Stop Uml
+      run: |
+        sudo rsh 254.255.255.2 systemctl poweroff
+        sleep 10
+        if [ -e "/proc/$UMLINUX_PID" ]; then
+          sleep 10
+          if [ -e "/proc/$UMLINUX_PID" ]; then
+            sudo kill -TERM "$UMLINUX_PID" || true
+            sleep 1
+          fi
+        fi
+        if [ -e "/proc/$UMLINUX_PID" ]; then
+          sleep 10
+          if [ -e "/proc/$UMLINUX_PID" ]; then
+            sudo kill -KILL "$UMLINUX_PID" || true
+            sleep 1
+          fi
+        fi
+
+    - name: Combine coverage files
+      run : |
+        CUSER="$(id --user --name)"
+        "${HOME}/go/bin/gocovmerge" profile.gcov profile2.gcov \
+          "umlrootfs/home/${CUSER}/profile3.gcov" \
+          "umlrootfs/home/${CUSER}/profile4.gcov" \
+          profile5_*.gcov > merged.gcov
+        # remove cmdline tools from coverage statistics
+        grep -v "cmd/.*\.go" merged.gcov > profile-all.gcov
+
+    - name: Convert coverage to lcov
+      uses: jandelgado/gcov2lcov-action@v1
+      with:
+          infile: profile-all.gcov
+          outfile: coverage.lcov
+
+    - name: Coveralls
+      uses: coverallsapp/github-action@v2
+      with:
+          github-token: ${{ secrets.github_token }}
+          path-to-lcov: coverage.lcov

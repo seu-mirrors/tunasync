@@ -1,5 +1,6 @@
 /build
 /build-*
-
+worker.test
+profile*
 .DS_Store
 .idea

@@ -12,7 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	cgv1 "github.com/containerd/cgroups/v3/cgroup1"
 	cgv2 "github.com/containerd/cgroups/v3/cgroup2"
-	"github.com/docker/go-units"
+	units "github.com/docker/go-units"
 )
 
 type providerEnum uint8
