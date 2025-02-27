@@ -15,7 +15,9 @@ type rsyncConfig struct {
 	upstreamURL, username, password string
 	excludeFile, includeFile        string
 	extraOptions                    []string
+	globalOptions                   []string
 	overriddenOptions               []string
+	useOverrideOnly                 bool
 	rsyncNeverTimeout               bool
 	rsyncTimeoutValue               int
 	rsyncEnv                        map[string]string
@@ -25,8 +27,7 @@ type rsyncConfig struct {
 	retry                           int
 	timeout                         time.Duration
 
-	uid int
-	gid int
+	uid, gid int
 }
 
 // An RsyncProvider provides the implementation to rsync-based syncing jobs
@@ -79,28 +80,39 @@ func newRsyncProvider(c rsyncConfig) (*rsyncProvider, error) {
 		options = c.overriddenOptions
 	}
 
-	if !c.rsyncNeverTimeout {
-		timeo := 120
-		if c.rsyncTimeoutValue > 0 {
-			timeo = c.rsyncTimeoutValue
+	if c.useOverrideOnly == true {
+		if c.overriddenOptions == nil {
+			return nil, errors.New("rsync_override_only is set but no rsync_override provided")
 		}
-		options = append(options, fmt.Sprintf("--timeout=%d", timeo))
-	}
+		// use overridden options only
+	} else {
+		if !c.rsyncNeverTimeout {
+			timeo := 120
+			if c.rsyncTimeoutValue > 0 {
+				timeo = c.rsyncTimeoutValue
+			}
+			options = append(options, fmt.Sprintf("--timeout=%d", timeo))
+		}
 
-	if c.useIPv6 {
-		options = append(options, "-6")
-	} else if c.useIPv4 {
-		options = append(options, "-4")
-	}
+		if c.useIPv6 {
+			options = append(options, "-6")
+		} else if c.useIPv4 {
+			options = append(options, "-4")
+		}
 
-	if c.excludeFile != "" {
-		options = append(options, "--exclude-from", c.excludeFile)
-	}
-	if c.includeFile != "" {
-		options = append(options, "--include-from", c.includeFile)
-	}
-	if c.extraOptions != nil {
-		options = append(options, c.extraOptions...)
+		if c.excludeFile != "" {
+			options = append(options, "--exclude-from", c.excludeFile)
+		}
+		if c.includeFile != "" {
+			options = append(options, "--include-from", c.includeFile)
+		}
+
+		if c.globalOptions != nil {
+			options = append(options, c.globalOptions...)
+		}
+		if c.extraOptions != nil {
+			options = append(options, c.extraOptions...)
+		}
 	}
 	provider.options = options
 
