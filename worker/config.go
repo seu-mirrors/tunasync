@@ -70,6 +70,9 @@ type globalConfig struct {
 	Group string `toml:"group"`
 	Uid   int
 	Gid   int
+
+	// merged with mirror-specific options. make sure you know what you are doing!
+	SuccessExitCodes []int `toml:"dangerous_global_success_exit_codes"`
 }
 
 type managerConfig struct {
@@ -223,6 +226,9 @@ type mirrorConfig struct {
 
 	// Overwrites global snapshot config switch
 	SnapshotType snapshotEnum `toml:"snapshot_type"`
+
+	// will be merged with global option
+	SuccessExitCodes []int `toml:"success_exit_codes"`
 
 	Command           string   `toml:"command"`
 	FailOnMatch       string   `toml:"fail_on_match"`
