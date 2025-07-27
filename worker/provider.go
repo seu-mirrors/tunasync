@@ -82,7 +82,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 		cfg.Global.MirrorDir, mirror.Dir,
 	)
 	pBtrfsConfig := &providerBtrfsSnapshotConfig{}
-	if cfg.BtrfsSnapshot.Enable {
+	if cfg.BtrfsSnapshot.Enable && !mirror.BtrfsNoSnapshot {
 		pBtrfsConfig = newProviderBtrfsSnapshotConfig(cfg.Global.MirrorDir, cfg.BtrfsSnapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
 		workingDir = pBtrfsConfig.mirrorWorkingDir
 	}
@@ -208,7 +208,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 	provider.AddHook(newLogLimiter(provider))
 
 	// Add Btrfs Snapshot Hook
-	if cfg.BtrfsSnapshot.Enable {
+	if cfg.BtrfsSnapshot.Enable && !mirror.BtrfsNoSnapshot {
 		provider.AddHook(newBtrfsSnapshotHook(provider, *pBtrfsConfig))
 	}
 

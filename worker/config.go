@@ -167,6 +167,9 @@ type mirrorConfig struct {
 	ExecOnSuccessExtra []string `toml:"exec_on_success_extra"`
 	ExecOnFailureExtra []string `toml:"exec_on_failure_extra"`
 
+	// Overwrites global btrfs snapshot config
+	BtrfsNoSnapshot bool `toml:"no_snapshot"`
+
 	Command       string   `toml:"command"`
 	FailOnMatch   string   `toml:"fail_on_match"`
 	SizePattern   string   `toml:"size_pattern"`
