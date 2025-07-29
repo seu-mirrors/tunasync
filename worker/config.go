@@ -1,16 +1,18 @@
 package worker
 
 import (
-	"dario.cat/mergo"
 	"errors"
+	"os"
+	"os/user"
+	"path/filepath"
+	"reflect"
+	"strconv"
+
+	"dario.cat/mergo"
 	"github.com/BurntSushi/toml"
 	cgv1 "github.com/containerd/cgroups/v3/cgroup1"
 	cgv2 "github.com/containerd/cgroups/v3/cgroup2"
 	"github.com/docker/go-units"
-	"os"
-	"os/user"
-	"path/filepath"
-	"strconv"
 )
 
 type providerEnum uint8
@@ -38,15 +40,15 @@ func (p *providerEnum) UnmarshalText(text []byte) error {
 
 // Config represents worker config options
 type Config struct {
-	Global        globalConfig        `toml:"global"`
-	Manager       managerConfig       `toml:"manager"`
-	Server        serverConfig        `toml:"server"`
-	Cgroup        cgroupConfig        `toml:"cgroup"`
-	BtrfsSnapshot btrfsSnapshotConfig `toml:"btrfs_snapshot"`
-	Docker        dockerConfig        `toml:"docker"`
-	Include       includeConfig       `toml:"include"`
-	MirrorsConf   []mirrorConfig      `toml:"mirrors"`
-	Mirrors       []mirrorConfig
+	Global      globalConfig   `toml:"global"`
+	Manager     managerConfig  `toml:"manager"`
+	Server      serverConfig   `toml:"server"`
+	Cgroup      cgroupConfig   `toml:"cgroup"`
+	Snapshot    snapshotConfig `toml:"snapshot"`
+	Docker      dockerConfig   `toml:"docker"`
+	Include     includeConfig  `toml:"include"`
+	MirrorsConf []mirrorConfig `toml:"mirrors"`
+	Mirrors     []mirrorConfig
 }
 
 type globalConfig struct {
@@ -106,11 +108,59 @@ type dockerConfig struct {
 	Options []string `toml:"options"`
 }
 
-type btrfsSnapshotConfig struct {
-	Enable         bool   `toml:"enable"`
-	ServePrefix    string `toml:"serve_prefix"`
-	WorkingPrefix  string `toml:"working_prefix"`
-	SnapshotPrefix string `toml:"snapshot_prefix"`
+type snapshotEnum uint8
+
+const (
+	snsNone snapshotEnum = iota
+	snsBtrfs
+	snsJfs
+	snsAll
+)
+
+func (sE *snapshotEnum) UnmarshalText(text []byte) error {
+	s := string(text)
+	switch s {
+	case `btrfs`:
+		*sE = snsBtrfs
+	case `jfs`:
+		*sE = snsJfs
+	case `none`:
+		fallthrough
+	default:
+		*sE = snsNone
+	}
+	return nil
+}
+
+// per-snapshot-type config in toml file
+type snapshotTypeConfig struct {
+	FsPath string `toml:"path"`
+	Enable bool   `toml:"enable"`
+}
+
+type snapshotConfig struct {
+	Enable          bool               `toml:"enable"`
+	BtrfsTypeConfig snapshotTypeConfig `toml:"btrfs"`
+	JfsTypeConfig   snapshotTypeConfig `toml:"jfs"`
+	ServePrefix     string             `toml:"serve_prefix"`
+	WorkingPrefix   string             `toml:"working_prefix"`
+	SnapshotPrefix  string             `toml:"snapshot_prefix"`
+}
+
+// Determine global snapshot type based on config section presence
+func (s *snapshotConfig) determineGlobalSnapshotType() snapshotEnum {
+	bE := reflect.ValueOf(s.BtrfsTypeConfig).IsValid()
+	jE := reflect.ValueOf(s.JfsTypeConfig).IsValid()
+	if !bE && !jE {
+		return snsNone
+	}
+	if bE && !jE {
+		return snsBtrfs
+	}
+	if !bE && jE {
+		return snsJfs
+	}
+	return snsAll
 }
 
 type includeConfig struct {
@@ -167,8 +217,8 @@ type mirrorConfig struct {
 	ExecOnSuccessExtra []string `toml:"exec_on_success_extra"`
 	ExecOnFailureExtra []string `toml:"exec_on_failure_extra"`
 
-	// Overwrites global btrfs snapshot config
-	BtrfsNoSnapshot bool `toml:"no_snapshot"`
+	// Overwrites global snapshot config switch
+	SnapshotType snapshotEnum `toml:"snapshot_type"`
 
 	Command       string   `toml:"command"`
 	FailOnMatch   string   `toml:"fail_on_match"`
@@ -192,6 +242,27 @@ type mirrorConfig struct {
 	DockerOptions []string `toml:"docker_options"`
 
 	ChildMirrors []mirrorConfig `toml:"mirrors"`
+}
+
+func (m *mirrorConfig) determineSnapshotType(cfg *Config) error {
+	globalSnapshotType := cfg.Snapshot.determineGlobalSnapshotType()
+	// if unknown, inherit global
+	if m.SnapshotType == snsNone {
+		if globalSnapshotType == snsAll {
+			logger.Infof("mirror %s: unspecified snapshot config, defaulting to btrfs", m.Name)
+			m.SnapshotType = snsBtrfs
+		} else {
+			m.SnapshotType = globalSnapshotType
+		}
+	} else /* ...otherwise if specified, prefer per-mirror value
+	and ensure global section is set */{
+		if globalSnapshotType == snsNone {
+			err := errors.New("must specify global snapshot config")
+			logger.Errorf(err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
 // LoadConfig loads configuration
@@ -273,6 +344,11 @@ func recursiveMirrors(cfg *Config, parent *mirrorConfig, mirror mirrorConfig) er
 	if err := mergo.Merge(&curMir, mirror, mergo.WithOverride); err != nil {
 		return err
 	}
+
+	if err := curMir.determineSnapshotType(cfg); err != nil {
+		return err
+	}
+
 	if mirror.ChildMirrors == nil {
 		cfg.Mirrors = append(cfg.Mirrors, curMir)
 	} else {

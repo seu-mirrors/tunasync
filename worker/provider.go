@@ -81,10 +81,15 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 	workingDir := filepath.Join(
 		cfg.Global.MirrorDir, mirror.Dir,
 	)
-	pBtrfsConfig := &providerBtrfsSnapshotConfig{}
-	if cfg.BtrfsSnapshot.Enable && !mirror.BtrfsNoSnapshot {
-		pBtrfsConfig = newProviderBtrfsSnapshotConfig(cfg.Global.MirrorDir, cfg.BtrfsSnapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
-		workingDir = pBtrfsConfig.mirrorWorkingDir
+	// We only need to check per-mirror cfg, as is already assigned on config load
+	var pConfig *providerSnapshotConfig
+	if mirror.SnapshotType == snsBtrfs {
+		pConfig = newProviderBtrfsSnapshotConfig(cfg.Global.MirrorDir, cfg.Snapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
+		workingDir = pConfig.mirrorWorkingDir
+	}
+	if mirror.SnapshotType == snsJfs {
+		pConfig = newproviderJfsSnapshotConfig(cfg.Global.MirrorDir, cfg.Snapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
+		workingDir = pConfig.mirrorWorkingDir
 	}
 	if logDir == "" {
 		logDir = cfg.Global.LogDir
@@ -207,9 +212,12 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 	// Add Logging Hook
 	provider.AddHook(newLogLimiter(provider))
 
-	// Add Btrfs Snapshot Hook
-	if cfg.BtrfsSnapshot.Enable && !mirror.BtrfsNoSnapshot {
-		provider.AddHook(newBtrfsSnapshotHook(provider, *pBtrfsConfig))
+	// Add Snapshot Hooks
+	if mirror.SnapshotType == snsBtrfs {
+		provider.AddHook(newBtrfsSnapshotHook(provider, *pConfig))
+	}
+	if mirror.SnapshotType == snsJfs {
+		provider.AddHook(newJfsSnapshotHook(provider, *pConfig))
 	}
 
 	// Add Docker Hook
