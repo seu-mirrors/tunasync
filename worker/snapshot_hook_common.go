@@ -34,8 +34,7 @@ func (c *providerSnapshotConfig) NewSnapshotName() string {
 }
 
 // create dir and chown to defined user/group
-func (c *providerSnapshotConfig) tryCreateAndChownDir(path string) error {
-	var err error
+func (c *providerSnapshotConfig) tryCreateAndChownDir(path string) {
 	fullPath, err := filepath.Abs(path)
 	if err != nil {
 		logger.Errorf("failed to get abs path %s: %s", path, err.Error())
@@ -49,5 +48,4 @@ func (c *providerSnapshotConfig) tryCreateAndChownDir(path string) error {
 			logger.Warningf("failed to chown dir %s: %s", fullPath, err.Error())
 		}
 	}
-	return err
 }
