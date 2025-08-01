@@ -3,6 +3,7 @@ package worker
 import (
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -36,7 +37,7 @@ func newproviderJfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, mi
 	c.tryCreateAndChownDir(c.mirrorSnapshotDir)
 
 	// create [jfs]/working
-	c.tryCreateAndChownDir(c.mirrorWorkingDir)
+	c.tryCreateAndChownDir(path.Dir(c.mirrorWorkingDir))
 
 	// create [jfs]/serve
 	c.tryCreateAndChownDir(c.mirrorServeDir)

@@ -6,6 +6,7 @@ package worker
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -41,7 +42,7 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, 
 	c.tryCreateAndChownDir(c.mirrorSnapshotDir)
 
 	// create [btrfs]/working
-	c.tryCreateAndChownDir(c.mirrorWorkingDir)
+	c.tryCreateAndChownDir(path.Dir(c.mirrorWorkingDir))
 
 	// create [btrfs]/serve
 	c.tryCreateAndChownDir(c.mirrorServeDir)
