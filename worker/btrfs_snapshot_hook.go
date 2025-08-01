@@ -45,7 +45,7 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, 
 	c.tryCreateAndChownDir(path.Dir(c.mirrorWorkingDir))
 
 	// create [btrfs]/serve
-	c.tryCreateAndChownDir(c.mirrorServeDir)
+	c.tryCreateAndChownDir(path.Dir(c.mirrorServeDir))
 
 	// link [mirror_dir]/[mirror_name] -> [btrfs]/serve
 	if _, err := os.Stat(realServeDir); os.IsNotExist(err) {

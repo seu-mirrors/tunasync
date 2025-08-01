@@ -40,7 +40,7 @@ func newproviderJfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, mi
 	c.tryCreateAndChownDir(path.Dir(c.mirrorWorkingDir))
 
 	// create [jfs]/serve
-	c.tryCreateAndChownDir(c.mirrorServeDir)
+	c.tryCreateAndChownDir(path.Dir(c.mirrorServeDir))
 
 	// link [mirror_dir]/[mirror_name] -> [jfs]/serve
 	if _, err := os.Stat(realServeDir); os.IsNotExist(err) {
