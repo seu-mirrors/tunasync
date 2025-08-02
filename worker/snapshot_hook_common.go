@@ -49,3 +49,42 @@ func (c *providerSnapshotConfig) tryCreateAndChownDir(path string) {
 		}
 	}
 }
+
+// create (modify) symlink newname to point to oldname
+//
+// newname is a symbolic link to oldname
+func (c *providerSnapshotConfig) tryLink(oldname, newname string) {
+	rfi, err := os.Lstat(newname)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// create if not exist
+			if err := os.Symlink(oldname, newname); err != nil {
+				logger.Errorf("failed to create symlink %s: %s", newname, err.Error())
+			}
+			return
+		}
+		logger.Errorf("failed to lstat %s: %s", newname, err.Error())
+		return
+	}
+	if rfi.Mode()&os.ModeSymlink != 0 {
+		pointsToPath, err := os.Readlink(newname)
+		if err != nil {
+			logger.Errorf("failed to read symlink %s: %s", newname, err.Error())
+			return
+		}
+
+		if pointsToPath == newname {
+			// already points to correct location
+			return
+		}
+	}
+	if err := os.Remove(newname); err != nil {
+		logger.Errorf("failed to remove %s: %s", newname, err.Error())
+		return
+	}
+
+	if err := os.Symlink(oldname, newname); err != nil {
+		logger.Errorf("failed to re-create symlink %s: %s", newname, err.Error())
+		return
+	}
+}

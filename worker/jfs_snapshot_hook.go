@@ -43,15 +43,11 @@ func newproviderJfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, mi
 	c.tryCreateAndChownDir(path.Dir(c.mirrorServeDir))
 
 	// link [mirror_dir]/[mirror_name] -> [jfs]/serve/[mirror_name]
-	if _, err := os.Stat(realServeDir); os.IsNotExist(err) {
-		relativePath, err := filepath.Rel(realServeDir, c.mirrorServeDir)
-		if err != nil {
-			logger.Errorf("failed to get relative path %s: %s", realServeDir, err.Error())
-		}
-		if err := os.Symlink(relativePath, realServeDir); err != nil {
-			logger.Errorf("failed to create symlink %s: %s", realServeDir, err.Error())
-		}
+	relativePath, err := filepath.Rel(realServeDir, c.mirrorServeDir)
+	if err != nil {
+		logger.Errorf("failed to get relative path %s: %s", realServeDir, err.Error())
 	}
+	c.tryLink(relativePath, realServeDir)
 
 	if _, err := c.LatestJfsSnapshot(); err != nil {
 		logger.Errorf("failed to get latest jfs snapshot for: %s", mirror.Name, err.Error())
