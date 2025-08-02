@@ -50,7 +50,6 @@ func newproviderJfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, mi
 }
 
 func (c *providerJfsSnapshotConfig) tryCreateJfsSnapshot(from, to string) error {
-	// append slash to make sure we are copying dir
 	cmd := exec.Command("juicefs", "clone", "-p", from, to)
 	err := cmd.Run()
 	if err != nil {
@@ -63,13 +62,17 @@ func (c *providerJfsSnapshotConfig) tryCreateJfsSnapshot(from, to string) error 
 }
 
 func (c *providerJfsSnapshotConfig) tryDeleteJfsSnapshot(path string) error {
-	err := os.RemoveAll(path)
+	cmd := exec.Command("juicefs", "rmr", path)
+	err := cmd.Run()
 	if err != nil {
-		logger.Errorf("failed to delete jfs snapshot %s: %s", path, err.Error())
-	} else {
-		logger.Noticef("deleted jfs snapshot %s", path)
+		logger.Warningf("failed to run 'juicefs rmr': %s", err)
+		err = os.RemoveAll(path)
+		if err != nil {
+			logger.Errorf("failed to delete jfs snapshot %s: %s", path, err.Error())
+			return err
+		}
 	}
-
+	logger.Noticef("deleted jfs snapshot %s", path)
 	return err
 }
 
