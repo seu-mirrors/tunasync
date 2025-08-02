@@ -16,6 +16,8 @@ import (
 type providerSnapshotConfig struct {
 	// global mirror serve dir
 	mirrorDir string
+	// web server serve dir, a soft link to mirrorServeDir
+	mirrorWebServeDir string
 	// a soft link to the latest snapshot (ideally ro)
 	mirrorServeDir string
 	// created subvolume (ideally rw) for syncing, and should only exist when syncing

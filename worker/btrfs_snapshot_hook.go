@@ -26,6 +26,7 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, 
 	fsPath := snsConfig.BtrfsTypeConfig.FsPath
 	c := &providerBtrfsSnapshotConfig{
 		mirrorDir:         mirrorDir,
+		mirrorWebServeDir: filepath.Join(mirrorDir, mirror.Name),
 		mirrorServeDir:    filepath.Join(fsPath, snsConfig.ServePrefix, mirror.Dir),
 		mirrorWorkingDir:  filepath.Join(fsPath, snsConfig.WorkingPrefix, mirror.Dir),
 		mirrorSnapshotDir: filepath.Join(fsPath, snsConfig.SnapshotPrefix, mirror.Dir),
@@ -35,8 +36,7 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, 
 	}
 
 	// create [mirror_dir]/[mirror_name]
-	realServeDir := filepath.Join(mirrorDir, mirror.Name)
-	c.tryCreateAndChownDir(realServeDir)
+	c.tryCreateAndChownDir(c.mirrorWebServeDir)
 
 	// create [btrfs]/snapshot/[mirror_name]
 	c.tryCreateAndChownDir(c.mirrorSnapshotDir)
@@ -46,13 +46,6 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, 
 
 	// create [btrfs]/serve
 	c.tryCreateAndChownDir(path.Dir(c.mirrorServeDir))
-
-	// link [mirror_dir]/[mirror_name] -> [btrfs]/serve/[mirror_name]
-	relativePath, err := filepath.Rel(realServeDir, c.mirrorServeDir)
-	if err != nil {
-		logger.Errorf("failed to get relative path %s: %s", realServeDir, err.Error())
-	}
-	c.tryLink(relativePath, realServeDir)
 
 	if _, err := c.LatestBtrfsSnapshot(); err != nil {
 		logger.Errorf("failed to get latest Btrfs snapshot for: %s", mirror.Name, err.Error())
@@ -219,6 +212,12 @@ func (h *btrfsSnapshotHook) postSuccess() error {
 		logger.Errorf("failed to rename symlink %s: %s", h.config.mirrorServeDir+".tmp", err.Error())
 		return err
 	}
+	// link [mirror_dir]/[mirror_name] -> [jfs]/serve/[mirror_name]
+	relativePath, err = filepath.Rel(h.config.mirrorWebServeDir, h.config.mirrorServeDir)
+	if err != nil {
+		return err
+	}
+	h.config.tryLink(relativePath, h.config.mirrorWebServeDir)
 	logger.Noticef("updated symlink %s", h.config.mirrorServeDir)
 
 	// delete working snapshot
