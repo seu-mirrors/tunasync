@@ -111,7 +111,8 @@ type dockerConfig struct {
 type snapshotEnum uint8
 
 const (
-	snsNone snapshotEnum = iota
+	snsUnknown snapshotEnum = iota
+	snsNone
 	snsBtrfs
 	snsJfs
 	snsAll
@@ -125,9 +126,9 @@ func (sE *snapshotEnum) UnmarshalText(text []byte) error {
 	case `jfs`:
 		*sE = snsJfs
 	case `none`:
-		fallthrough
-	default:
 		*sE = snsNone
+	default:
+		*sE = snsUnknown
 	}
 	return nil
 }
@@ -152,7 +153,7 @@ func (s *snapshotConfig) determineGlobalSnapshotType() snapshotEnum {
 	bE := reflect.ValueOf(s.BtrfsTypeConfig).IsValid()
 	jE := reflect.ValueOf(s.JfsTypeConfig).IsValid()
 	if !bE && !jE {
-		return snsNone
+		return snsUnknown
 	}
 	if bE && !jE {
 		return snsBtrfs
@@ -247,7 +248,7 @@ type mirrorConfig struct {
 func (m *mirrorConfig) determineSnapshotType(cfg *Config) error {
 	globalSnapshotType := cfg.Snapshot.determineGlobalSnapshotType()
 	// if unknown, inherit global
-	if m.SnapshotType == snsNone {
+	if m.SnapshotType == snsUnknown {
 		if globalSnapshotType == snsAll {
 			logger.Infof("mirror %s: unspecified snapshot config, defaulting to btrfs", m.Name)
 			m.SnapshotType = snsBtrfs
@@ -256,7 +257,7 @@ func (m *mirrorConfig) determineSnapshotType(cfg *Config) error {
 		}
 	} else /* ...otherwise if specified, prefer per-mirror value
 	and ensure global section is set */{
-		if globalSnapshotType == snsNone {
+		if globalSnapshotType == snsUnknown {
 			err := errors.New("must specify global snapshot config")
 			logger.Errorf(err.Error())
 			return err

@@ -88,7 +88,7 @@ func newMirrorProvider(mirror mirrorConfig, cfg *Config) mirrorProvider {
 		workingDir = pConfig.mirrorWorkingDir
 	}
 	if mirror.SnapshotType == snsJfs {
-		pConfig = newproviderJfsSnapshotConfig(cfg.Global.MirrorDir, cfg.Snapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
+		pConfig = newProviderJfsSnapshotConfig(cfg.Global.MirrorDir, cfg.Snapshot, mirror, cfg.Global.Uid, cfg.Global.Gid)
 		workingDir = pConfig.mirrorWorkingDir
 	}
 	if logDir == "" {

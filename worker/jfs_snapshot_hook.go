@@ -17,7 +17,7 @@ type jfsSnapshotHook struct {
 type providerJfsSnapshotConfig = providerSnapshotConfig
 
 // initialize and create dir / subvolume if needed
-func newproviderJfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, mirror mirrorConfig, uid, gid int) *providerJfsSnapshotConfig {
+func newProviderJfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, mirror mirrorConfig, uid, gid int) *providerJfsSnapshotConfig {
 	fsPath := snsConfig.JfsTypeConfig.FsPath
 	c := &providerJfsSnapshotConfig{
 		mirrorDir:         mirrorDir,
