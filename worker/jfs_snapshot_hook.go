@@ -174,7 +174,9 @@ func (h *jfsSnapshotHook) postSuccess() error {
 	}
 
 	// create snapshot
-	err = h.config.tryCreateJfsSnapshot(workingDir, newSnapshotPath)
+	// err = h.config.tryCreateJfsSnapshot(workingDir, newSnapshotPath)
+	// update: juicefs doesn't have concepts like readonly subvolume, so we just rename the working snapshot to the new snapshot
+	err = os.Rename(workingDir, newSnapshotPath)
 	if err != nil {
 		return err
 	}
@@ -201,9 +203,10 @@ func (h *jfsSnapshotHook) postSuccess() error {
 	logger.Noticef("updated symlink %s", h.config.mirrorServeDir)
 
 	// delete working snapshot
-	if err := h.config.tryDeleteJfsSnapshot(workingDir); err != nil {
-		return err
-	}
+	// if err := h.config.tryDeleteJfsSnapshot(workingDir); err != nil {
+	// 	return err
+	// }
+	// we've renamed the working snapshot to the new snapshot, so no need to delete it
 
 	// delete old snapshots
 	snapshotEntries, err := os.ReadDir(h.config.mirrorSnapshotDir)
