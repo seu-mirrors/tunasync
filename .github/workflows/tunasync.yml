@@ -29,7 +29,7 @@ jobs:
         make tunasynctl
 
     - name: Keep artifacts
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: tunasync-bin
         path: build-linux-amd64/
@@ -56,7 +56,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '^1.22'
+        go-version: '^1.24'
       id: go
 
     - name: Run Unit tests.
