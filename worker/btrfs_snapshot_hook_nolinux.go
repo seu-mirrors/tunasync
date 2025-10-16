@@ -13,7 +13,7 @@ func newProviderBtrfsSnapshotConfig(mirrorDir string, snsConfig snapshotConfig, 
 	return nil
 }
 
-func newBtrfsSnapshotHook(provider mirrorProvider, snapshotPath string, mirror mirrorConfig) *btrfsSnapshotHook {
+func newBtrfsSnapshotHook(provider mirrorProvider, config providerBtrfsSnapshotConfig) *btrfsSnapshotHook {
 	return &btrfsSnapshotHook{}
 }
 
